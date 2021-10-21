@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato&family=Montserrat:wght@700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Lato';
+}
+
+h1, h2, h3 {
+    font-family: 'Montserrat';
+}
+
+.controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 2.5vh;
+    column-gap: 5vw;
+}
+
+input[type="number"] {
+    font-size: 1.5em;
+    padding: 0.25em;
+    background-color: hsla(120, 0%, 80%, 1);
+    border: transparent;
+    border-radius: 0.5em;
+    width: 7ch;
+}
+
+button {
+    background-color: indianred;
+    color: white;
+    padding: 0.5em;
+    border: none;
+}
+
+.output {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+canvas {
+    margin: 5vw 5vh;
+    background-color: black;
+}
+
+#console {
+    background-color: lightgray;
+    font-family: monospace;
+    height: 33vh;
+    max-height: 33vh;
+    padding: 1em;
+    overflow: scroll;
+}
+
+.config {
+    background-color: lightgray;
+    font-family: monospace;
+    height: 33vh;
+    max-height: 33vh;
+    overflow: scroll;
+}
+
+.section {
+    margin: 2.5vh 5vw;
+}
+
+.GAControlsContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.GAControlsContainer > button {
+    width: 100%;
+    margin: 0 2.5vw;
+}

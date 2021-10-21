@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="stylesheet" href="styles.css">
+        <title>TSP-GA</title>
+    </head>
+    <body>
+        <header>
+            <h1>Solving the Travelling Salesperson Problem</h1>
+            <h2>Using Genetic Algorithm</h2>
+        </header>
+        <div class="section controls">
+            <p>Number of Cities</p>
+            <input type="number" name="numcities" id="numcities" placeholder="cities">
+            <p>Popsize per generation</p>
+            <input type="number" name="popsize" id="popsize" placeholder="pops">
+            <p>Mutation Rate: (0 to 1)</p>
+            <input type="range" name="mutationrate" id="mrate" min="0", max="100" placeholder="mutation rate">
+            <button id="generateMapButton">Generate Map</button>
+            <div class="GAControlsContainer">
+                <button id="startGAButton">Start Solving</button>
+                <button id="stopGAButton">Reset</button>
+            </div>
+        </div>
+        <div id="config" class="section config"></div>
+        <div class="section output">
+            <h3>Current Gen All</h3>
+            <h3 id="bylabel">Best Yet</h3>
+            <canvas id="currentGen" width="720px" height="480px"></canvas>
+            <canvas id="bestYet" width="720px" height="480px"></canvas>
+        </div>
+        <div class="section log">
+            <div class="geneShow" id="parents"></div>
+            <div class="geneShow" id="crossover"></div>
+            <div id="console"></div>
+        </div>
+        <script src="./src/app.js"></script>
+    </body>
+</html>
