@@ -152,6 +152,7 @@ async function drawPath(
 }
 
 generateMapButton.addEventListener("click", (e) => {
+    configContainer.innerHTML = '';
     ANIMATIONSTATE = "unstarted";
     if (!numcitiesInput.value) {
         alert("Enter a value for numcities");

@@ -173,6 +173,7 @@ function drawPath(citylist, cnv, color, wait) {
     });
 }
 generateMapButton.addEventListener("click", function (e) {
+    configContainer.innerHTML = '';
     ANIMATIONSTATE = "unstarted";
     if (!numcitiesInput.value) {
         alert("Enter a value for numcities");
