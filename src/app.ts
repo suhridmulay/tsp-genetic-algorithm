@@ -10,14 +10,18 @@ class City {
     }
 }
 
-function distanceSquared(c1: City, c2: City) {
+function distanceSquared(c1: City, c2: City, threshold: number = Infinity) {
     let dx = c1.x - c2.x;
     let dy = c1.y - c2.y;
-    return dx * dx + dy * dy;
+    let distsq = dx * dx + dy * dy;
+    // Experimental change
+    // let's disallow long paths entirely
+    if (distsq > threshold * threshold) { return Infinity; }
+    else { return distsq; }
 }
 
-function distance(c1: City, c2: City) {
-    return Math.sqrt(distanceSquared(c1, c2));
+function distance(c1: City, c2: City, threshold: number = Infinity) {
+    return Math.sqrt(distanceSquared(c1, c2, threshold));
 }
 
 function generateRandomMap(numcities: number, width: number, height: number) {
@@ -46,10 +50,15 @@ function generateRandomMap(numcities: number, width: number, height: number) {
     return citylist;
 }
 
-function pathDistance(path: City[]) {
+function pathDistance(path: City[], threshold: number = Infinity) {
     let d = 0.0;
+    let max_pairwise_dist = 0;
     for (let i = 0; i < path.length - 1; i++) {
-        d += distance(path[i], path[i + 1]);
+        let pairwise_dist = distance(path[i], path[i + 1]);
+        if (pairwise_dist > max_pairwise_dist) { 
+            max_pairwise_dist = pairwise_dist;
+        } 
+        d += distance(path[i], path[i + 1], threshold)
     }
     return d;
 }
@@ -93,6 +102,7 @@ const configContainer: HTMLDivElement = document.getElementById(
 ) as HTMLDivElement;
 const bestYetLabel: HTMLHeadingElement = document.getElementById('bylabel') as HTMLHeadingElement;
 const stopGAButton: HTMLButtonElement = document.getElementById('stopGAButton') as HTMLButtonElement;
+const pathThresholdInput: HTMLInputElement = document.getElementById('distanceThresh') as HTMLInputElement;
 
 let ANIMATIONSTATE: "unstarted" | "stopped" | "running" = "unstarted";
 
@@ -100,6 +110,7 @@ let CITYLIST: City[] = [];
 let BESTPATH: City[] = [];
 let MUTATIONRATE = 0.3;
 let POPCAP = 20;
+let DIST_THRESHOLD = Infinity;
 const GENS = Infinity;
 
 function drawCityList(citylist: City[], cnv: HTMLCanvasElement) {
@@ -157,6 +168,9 @@ generateMapButton.addEventListener("click", (e) => {
     if (!numcitiesInput.value) {
         alert("Enter a value for numcities");
     }
+    if (pathThresholdInput.value) {
+        DIST_THRESHOLD = parseInt(pathThresholdInput.value)
+    }
     let numcities = parseInt(numcitiesInput.value);
     let citylist = generateRandomMap(
         numcities,
@@ -173,7 +187,7 @@ generateMapButton.addEventListener("click", (e) => {
         mutationRateInput.valueAsNumber / parseFloat(mutationRateInput.max);
 
     let currentConfig = JSON.stringify(
-        { population: POPCAP, mutationRate: MUTATIONRATE, cities: CITYLIST },
+        { population: POPCAP, mutationRate: MUTATIONRATE, cities: CITYLIST, distanceThreshold: DIST_THRESHOLD },
         null,
         "\t"
     );
@@ -185,6 +199,11 @@ generateMapButton.addEventListener("click", (e) => {
 mutationRateInput.addEventListener('change', (e) => {
     MUTATIONRATE =
         mutationRateInput.valueAsNumber / parseFloat(mutationRateInput.max);
+})
+
+pathThresholdInput.addEventListener('change', (e) => {
+    DIST_THRESHOLD = parseInt(pathThresholdInput.value)
+    console.log('Updating distance threshold');
 })
 
 function shuffle(arr: any[]) {
@@ -250,11 +269,11 @@ startGAButton.addEventListener("click", async (e) => {
 
         let { gene: air1, length: air1marks } = genes
             .map((g) => {
-                return { gene: g, length: pathDistance(g) };
+                return { gene: g, length: pathDistance(g, DIST_THRESHOLD) };
             })
             .reduce((p, c) => (p.length > c.length ? c : p));
 
-        if (air1marks < pathDistance(BESTPATH)) {
+        if (air1marks < pathDistance(BESTPATH, DIST_THRESHOLD)) {
             console.log(`Updating best path`);
             BESTPATH = [...air1];
             let color = {
@@ -300,7 +319,14 @@ startGAButton.addEventListener("click", async (e) => {
 
         // Selection procedure
         // Sort by path length
-        children.sort((a, b) => pathDistance(a) - pathDistance(b));
+        children.sort((a, b) => {
+            let diff = pathDistance(a, DIST_THRESHOLD) - pathDistance(b, DIST_THRESHOLD); 
+            if (isNaN(diff)) {
+                return 1
+            } else {
+                return diff
+            }
+        });
         let lucky_child = children[Math.floor(Math.random() * children.length)]
         // Select top POPCAP - 1
         children = children.splice(0, POPCAP - 1);
@@ -324,6 +350,14 @@ startGAButton.addEventListener("click", async (e) => {
         consoleDiv.appendChild(statusContainer);
         bestYetLabel.innerText = `Best Yet ${pathDistance(BESTPATH)}`;
         consoleDiv.scrollTop = consoleDiv.scrollHeight;
+
+        // Log out the maximum pairwise distance
+        let mpd = 0;
+        for (let i = 0; i < children[0].length - 1; i++) {
+            let pd = distance(children[0][i], children[0][i + 1]);
+            if (pd > mpd) { mpd = pd }
+        }
+        consoleDiv.innerHTML += `<p>[INFO] Maximum pairwise distance in best path: ${mpd} </p>`
 
         if (gwc > CITYLIST.length * CITYLIST.length - 1) {
             break;

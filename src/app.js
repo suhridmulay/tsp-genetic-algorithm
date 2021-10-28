@@ -52,13 +52,23 @@ var City = /** @class */ (function () {
     }
     return City;
 }());
-function distanceSquared(c1, c2) {
+function distanceSquared(c1, c2, threshold) {
+    if (threshold === void 0) { threshold = Infinity; }
     var dx = c1.x - c2.x;
     var dy = c1.y - c2.y;
-    return dx * dx + dy * dy;
+    var distsq = dx * dx + dy * dy;
+    // Experimental change
+    // let's disallow long paths entirely
+    if (distsq > threshold * threshold) {
+        return Infinity;
+    }
+    else {
+        return distsq;
+    }
 }
-function distance(c1, c2) {
-    return Math.sqrt(distanceSquared(c1, c2));
+function distance(c1, c2, threshold) {
+    if (threshold === void 0) { threshold = Infinity; }
+    return Math.sqrt(distanceSquared(c1, c2, threshold));
 }
 function generateRandomMap(numcities, width, height) {
     var citylist = [];
@@ -88,10 +98,16 @@ function generateRandomMap(numcities, width, height) {
     }
     return citylist;
 }
-function pathDistance(path) {
+function pathDistance(path, threshold) {
+    if (threshold === void 0) { threshold = Infinity; }
     var d = 0.0;
+    var max_pairwise_dist = 0;
     for (var i = 0; i < path.length - 1; i++) {
-        d += distance(path[i], path[i + 1]);
+        var pairwise_dist = distance(path[i], path[i + 1]);
+        if (pairwise_dist > max_pairwise_dist) {
+            max_pairwise_dist = pairwise_dist;
+        }
+        d += distance(path[i], path[i + 1], threshold);
     }
     return d;
 }
@@ -110,11 +126,13 @@ var mutationRateInput = document.getElementById("mrate");
 var configContainer = document.getElementById("config");
 var bestYetLabel = document.getElementById('bylabel');
 var stopGAButton = document.getElementById('stopGAButton');
+var pathThresholdInput = document.getElementById('distanceThresh');
 var ANIMATIONSTATE = "unstarted";
 var CITYLIST = [];
 var BESTPATH = [];
 var MUTATIONRATE = 0.3;
 var POPCAP = 20;
+var DIST_THRESHOLD = Infinity;
 var GENS = Infinity;
 function drawCityList(citylist, cnv) {
     var ctx = cnv.getContext("2d");
@@ -178,6 +196,9 @@ generateMapButton.addEventListener("click", function (e) {
     if (!numcitiesInput.value) {
         alert("Enter a value for numcities");
     }
+    if (pathThresholdInput.value) {
+        DIST_THRESHOLD = parseInt(pathThresholdInput.value);
+    }
     var numcities = parseInt(numcitiesInput.value);
     var citylist = generateRandomMap(numcities, currentGenCanvas.width, currentGenCanvas.height);
     CITYLIST = citylist;
@@ -188,7 +209,7 @@ generateMapButton.addEventListener("click", function (e) {
     POPCAP = parseInt(popSizeInput.value);
     MUTATIONRATE =
         mutationRateInput.valueAsNumber / parseFloat(mutationRateInput.max);
-    var currentConfig = JSON.stringify({ population: POPCAP, mutationRate: MUTATIONRATE, cities: CITYLIST }, null, "\t");
+    var currentConfig = JSON.stringify({ population: POPCAP, mutationRate: MUTATIONRATE, cities: CITYLIST, distanceThreshold: DIST_THRESHOLD }, null, "\t");
     var configDisplay = document.createElement("pre");
     configDisplay.innerHTML = currentConfig;
     configContainer.appendChild(configDisplay);
@@ -196,6 +217,10 @@ generateMapButton.addEventListener("click", function (e) {
 mutationRateInput.addEventListener('change', function (e) {
     MUTATIONRATE =
         mutationRateInput.valueAsNumber / parseFloat(mutationRateInput.max);
+});
+pathThresholdInput.addEventListener('change', function (e) {
+    DIST_THRESHOLD = parseInt(pathThresholdInput.value);
+    console.log('Updating distance threshold');
 });
 function shuffle(arr) {
     var copy = __spreadArray([], arr, true);
@@ -243,7 +268,7 @@ startGAButton.addEventListener("click", function (e) { return __awaiter(_this, v
                 BESTPATH = genes[0];
                 gwc = 0;
                 _loop_2 = function (i) {
-                    var _i, genes_1, path, color, _b, air1, air1marks, color, statusContainer, CGBstatus, GWCstatus, children, i_1, j, lucky_child;
+                    var _i, genes_1, path, color, _b, air1, air1marks, color, statusContainer, CGBstatus, GWCstatus, children, i_1, j, lucky_child, mpd, i_2, pd;
                     return __generator(this, function (_c) {
                         switch (_c.label) {
                             case 0:
@@ -261,10 +286,10 @@ startGAButton.addEventListener("click", function (e) { return __awaiter(_this, v
                                 }
                                 _b = genes
                                     .map(function (g) {
-                                    return { gene: g, length: pathDistance(g) };
+                                    return { gene: g, length: pathDistance(g, DIST_THRESHOLD) };
                                 })
                                     .reduce(function (p, c) { return (p.length > c.length ? c : p); }), air1 = _b.gene, air1marks = _b.length;
-                                if (air1marks < pathDistance(BESTPATH)) {
+                                if (air1marks < pathDistance(BESTPATH, DIST_THRESHOLD)) {
                                     console.log("Updating best path");
                                     BESTPATH = __spreadArray([], air1, true);
                                     color = {
@@ -302,7 +327,15 @@ startGAButton.addEventListener("click", function (e) { return __awaiter(_this, v
                                 }
                                 // Selection procedure
                                 // Sort by path length
-                                children.sort(function (a, b) { return pathDistance(a) - pathDistance(b); });
+                                children.sort(function (a, b) {
+                                    var diff = pathDistance(a, DIST_THRESHOLD) - pathDistance(b, DIST_THRESHOLD);
+                                    if (isNaN(diff)) {
+                                        return 1;
+                                    }
+                                    else {
+                                        return diff;
+                                    }
+                                });
                                 lucky_child = children[Math.floor(Math.random() * children.length)];
                                 // Select top POPCAP - 1
                                 children = children.splice(0, POPCAP - 1);
@@ -324,6 +357,14 @@ startGAButton.addEventListener("click", function (e) { return __awaiter(_this, v
                                 consoleDiv.appendChild(statusContainer);
                                 bestYetLabel.innerText = "Best Yet " + pathDistance(BESTPATH);
                                 consoleDiv.scrollTop = consoleDiv.scrollHeight;
+                                mpd = 0;
+                                for (i_2 = 0; i_2 < children[0].length - 1; i_2++) {
+                                    pd = distance(children[0][i_2], children[0][i_2 + 1]);
+                                    if (pd > mpd) {
+                                        mpd = pd;
+                                    }
+                                }
+                                consoleDiv.innerHTML += "<p>[INFO] Maximum pairwise distance in best path: " + mpd + " </p>";
                                 if (gwc > CITYLIST.length * CITYLIST.length - 1) {
                                     return [2 /*return*/, "break"];
                                 }
